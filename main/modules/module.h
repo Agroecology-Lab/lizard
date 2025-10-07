@@ -44,6 +44,7 @@ enum ModuleType {
     dunker_motor,
     dunker_wheels,
     analog,
+    zio_motor,
     proxy,
 };
 
@@ -84,3 +85,4 @@ public:
     virtual void write_property(const std::string property_name, const ConstExpression_ptr expression, const bool from_expander = false);
     virtual void handle_can_msg(const uint32_t id, const int count, const uint8_t *const data);
 };
+
