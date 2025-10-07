@@ -30,6 +30,7 @@
 #include "roboclaw_wheels.h"
 #include "serial.h"
 #include "stepper_motor.h"
+#include "zio_motor.h"  // <-- ADDED: Include for ZioMotor module
 #include <stdarg.h>
 
 #ifdef CONFIG_IDF_TARGET_ESP32S3
@@ -272,6 +273,29 @@ Module_ptr Module::create(const std::string type,
         const RoboClawMotor_ptr left_motor = get_module_paramter<RoboClawMotor>(arguments[0], roboclaw_motor, "roboclaw motor");
         const RoboClawMotor_ptr right_motor = get_module_paramter<RoboClawMotor>(arguments[1], roboclaw_motor, "roboclaw motor");
         return std::make_shared<RoboClawWheels>(name, left_motor, right_motor);
+    } else if (type == "ZioMotor") {
+        // ============================================================
+        // ADDED: ZioMotor module creation
+        // ============================================================
+        Module::expect(arguments, 3, numbery, numbery, numbery);
+        unsigned int motor_number = arguments[0]->evaluate_integer();
+        i2c_port_t i2c_port = (i2c_port_t)arguments[1]->evaluate_integer();
+        uint8_t i2c_addr = (uint8_t)arguments[2]->evaluate_integer();
+
+        // Create a shared PCA9685 instance for this I2C bus if it doesn't exist
+        // This allows multiple motors to share the same PCA9685 controller
+        static std::map<std::pair<i2c_port_t, uint8_t>, PCA9685_ptr> pca_instances;
+        auto key = std::make_pair(i2c_port, i2c_addr);
+        
+        if (pca_instances.find(key) == pca_instances.end()) {
+            ESP_LOGI("ZioMotor", "Creating new PCA9685 instance for I2C port %d, address 0x%02X", i2c_port, i2c_addr);
+            pca_instances[key] = std::make_shared<PCA9685>(i2c_port, i2c_addr);
+            pca_instances[key]->begin();
+            pca_instances[key]->set_pwm_freq(1000); // Set default freq for motors (1kHz)
+        }
+
+        return std::make_shared<ZioMotor>(name, pca_instances[key], motor_number);
+        // ============================================================
     } else if (type == "StepperMotor") {
         if (arguments.size() < 2 || arguments.size() > 6) {
             throw std::runtime_error("unexpected number of arguments");
@@ -291,43 +315,70 @@ Module_ptr Module::create(const std::string type,
         Motor_ptr motor;
         // TODO: rmd_motor, roboclaw_motor
         if (module->type == odrive_motor) {
-            motor = get_module_paramter<ODriveMotor>(arguments[0], odrive_motor, "odrive_motor");
+            motor = get_module_paramter<ODriveMotor>(arguments[0], odrive_motor, "odrive motor");
         } else if (module->type == stepper_motor) {
-            motor = get_module_paramter<StepperMotor>(arguments[0], stepper_motor, "stepper_motor");
-        } else if (module->type == canopen_motor) {
-            motor = get_module_paramter<CanOpenMotor>(arguments[0], canopen_motor, "canopen_motor");
+            motor = get_module_paramter<StepperMotor>(arguments[0], stepper_motor, "stepper motor");
+        } else if (module->type == d1_motor) {
+            motor = get_module_paramter<D1Motor>(arguments[0], d1_motor, "d1 motor");
+        } else if (module->type == dunker_motor) {
+            motor = get_module_paramter<DunkerMotor>(arguments[0], dunker_motor, "dunker motor");
         } else {
-            throw std::runtime_error("module \"" + name + "\" is not a supported motor for MotorAxis");
+            throw std::runtime_error("unknown motor type");
         }
-        const Input_ptr input1 = get_module_paramter<Input>(arguments[1], input, "input");
-        const Input_ptr input2 = get_module_paramter<Input>(arguments[2], input, "input");
-        return std::make_shared<MotorAxis>(name, motor, input1, input2);
-    } else if (type == "CanOpenMotor") {
-        Module::expect(arguments, 2, identifier, integer);
-        const Can_ptr can_module = get_module_paramter<Can>(arguments[0], can, "can connection");
-        const int64_t node_id = arguments[1]->evaluate_integer();
-        CanOpenMotor_ptr motor = std::make_shared<CanOpenMotor>(name, can_module, node_id);
-        motor->subscribe_to_can();
-        return motor;
-    } else if (type == "CanOpenMaster") {
+        const std::string end_l_name = arguments[1]->evaluate_identifier();
+        Module_ptr end_l_module = Global::get_module(end_l_name);
+        if (end_l_module->type != input) {
+            throw std::runtime_error("module \"" + end_l_name + "\" is no input");
+        }
+        const Input_ptr end_l = std::static_pointer_cast<Input>(end_l_module);
+        const std::string end_r_name = arguments[2]->evaluate_identifier();
+        Module_ptr end_r_module = Global::get_module(end_r_name);
+        if (end_r_module->type != input) {
+            throw std::runtime_error("module \"" + end_r_name + "\" is no input");
+        }
+        const Input_ptr end_r = std::static_pointer_cast<Input>(end_r_module);
+        return std::make_shared<MotorAxis>(name, motor, end_l, end_r);
+    } else if (type == "CANopenMaster") {
         Module::expect(arguments, 1, identifier);
-        const Can_ptr can_module = get_module_paramter<Can>(arguments[0], can, "can connection");
-        CanOpenMaster_ptr master = std::make_shared<CanOpenMaster>(name, can_module);
-        return master;
+        std::string can_name = arguments[0]->evaluate_identifier();
+        Module_ptr module = Global::get_module(can_name);
+        if (module->type != can) {
+            throw std::runtime_error("module \"" + can_name + "\" is no can connection");
+        }
+        const Can_ptr can = std::static_pointer_cast<Can>(module);
+        CANopenMaster_ptr canopen_master = std::make_shared<CANopenMaster>(name, can);
+        canopen_master->subscribe_to_can();
+        return canopen_master;
+    } else if (type == "CANopenMotor") {
+        Module::expect(arguments, 2, identifier, integer);
+        std::string canopen_master_name = arguments[0]->evaluate_identifier();
+        Module_ptr module = Global::get_module(canopen_master_name);
+        if (module->type != canopen_master) {
+            throw std::runtime_error("module \"" + canopen_master_name + "\" is no CANopen master");
+        }
+        const CANopenMaster_ptr canopen_master = std::static_pointer_cast<CANopenMaster>(module);
+        uint8_t node_id = arguments[1]->evaluate_integer();
+        return std::make_shared<CANopenMotor>(name, canopen_master, node_id);
     } else if (type == "D1Motor") {
         Module::expect(arguments, 2, identifier, integer);
-        const Can_ptr can_module = get_module_paramter<Can>(arguments[0], can, "can connection");
-        const int64_t node_id = arguments[1]->evaluate_integer();
-        D1Motor_ptr motor = std::make_shared<D1Motor>(name, can_module, node_id);
-        motor->subscribe_to_can();
-        return motor;
+        std::string canopen_master_name = arguments[0]->evaluate_identifier();
+        Module_ptr module = Global::get_module(canopen_master_name);
+        if (module->type != canopen_master) {
+            throw std::runtime_error("module \"" + canopen_master_name + "\" is no CANopen master");
+        }
+        const CANopenMaster_ptr canopen_master = std::static_pointer_cast<CANopenMaster>(module);
+        uint8_t node_id = arguments[1]->evaluate_integer();
+        return std::make_shared<D1Motor>(name, canopen_master, node_id);
     } else if (type == "DunkerMotor") {
         Module::expect(arguments, 2, identifier, integer);
-        const Can_ptr can_module = get_module_paramter<Can>(arguments[0], can, "can connection");
-        const int64_t node_id = arguments[1]->evaluate_integer();
-        DunkerMotor_ptr motor = std::make_shared<DunkerMotor>(name, can_module, node_id);
-        motor->subscribe_to_can();
-        return motor;
+        std::string canopen_master_name = arguments[0]->evaluate_identifier();
+        Module_ptr module = Global::get_module(canopen_master_name);
+        if (module->type != canopen_master) {
+            throw std::runtime_error("module \"" + canopen_master_name + "\" is no CANopen master");
+        }
+        const CANopenMaster_ptr canopen_master = std::static_pointer_cast<CANopenMaster>(module);
+        uint8_t node_id = arguments[1]->evaluate_integer();
+        return std::make_shared<DunkerMotor>(name, canopen_master, node_id);
     } else if (type == "DunkerWheels") {
         Module::expect(arguments, 2, identifier, identifier);
         std::string left_name = arguments[0]->evaluate_identifier();
@@ -444,3 +495,5 @@ const std::map<std::string, Variable_ptr> Module::get_module_defaults(const std:
     }
     return it->second();
 }
+
+Adding F9P Support to Field Friend via USB Connection - Manus
