@@ -1,5 +1,15 @@
 # Notes
+
+
+git clone https://github.com/Agroecology-Lab/lizard
+
+cd lizard
+
+ls /dev/tty* (look for /dev/ttyUSB0 or /dev/ttyACM0).
+
 docker run -it -v ~/lizard:/lizard --device=/dev/ttyUSB0 espressif/idf:release-v5.5
+
+./espresso.py -d flash /dev/ttyACM0 
 
 
 # Lizard: Hardware Control Language
