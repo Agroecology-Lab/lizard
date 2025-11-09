@@ -1,3 +1,7 @@
+# Notes
+docker run -it -v ~/lizard:/lizard --device=/dev/ttyUSB0 espressif/idf:release-v5.5
+
+
 # Lizard: Hardware Control Language
 
 Lizard is a domain-specific language designed for defining and controlling the behavior of hardware components on embedded systems. It is optimized to run on microcontrollers connected to peripherals such as motor controllers, sensors, and actuators. Lizard is frequently used in conjunction with higher-level control systems like ROS (Robot Operating System) or RoSys, serving as the low-level "lizard brain" of a machine to ensure basic safety and execute time-critical actions with high reliability [1].
