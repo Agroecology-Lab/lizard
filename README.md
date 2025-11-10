@@ -1,13 +1,15 @@
 # Notes
 
 
-git clone https://github.com/Agroecology-Lab/lizard
+git clone https://github.com/zauberzeug/lizard/
 
 cd lizard
 
 ls /dev/tty* (look for /dev/ttyUSB0 or /dev/ttyACM0).
 
 docker run -it -v ~/lizard:/project --device=/dev/ttyACM0 espressif/idf:release-v5.5
+
+cd project
 
 ./build.py esp32s3 --clean
 
