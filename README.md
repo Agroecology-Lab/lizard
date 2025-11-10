@@ -15,6 +15,8 @@ git clone https://github.com/zauberzeug/esp-serial-flasher
 
 cd ..
 
+idf.py -C components create-component esp32-serial-flasher
+
 ls /dev/tty* (look for /dev/ttyUSB0 or /dev/ttyACM0).
 
 docker run -it -v ~/lizard:/project --device=/dev/ttyACM0 espressif/idf:release-v5.5
