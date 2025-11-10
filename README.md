@@ -7,7 +7,7 @@ cd lizard
 
 ls /dev/tty* (look for /dev/ttyUSB0 or /dev/ttyACM0).
 
-docker run -it -v ~/lizard:/lizard --device=/dev/ttyUSB0 espressif/idf:release-v5.5
+docker run -it -v ~/lizard:/project --device=/dev/ttyACM0 espressif/idf:release-v5.5
 
 ./espresso.py -d flash /dev/ttyACM0 
 
