@@ -3,7 +3,17 @@
 
 git clone https://github.com/zauberzeug/lizard/
 
-cd lizard
+cd lizard/components
+
+rm -r esp32-zeug
+
+rm -r esp32-serial-flasher
+
+git clone https://github.com/zauberzeug/esp32-zeug
+
+git clone https://github.com/zauberzeug/esp-serial-flasher
+
+cd ..
 
 ls /dev/tty* (look for /dev/ttyUSB0 or /dev/ttyACM0).
 
