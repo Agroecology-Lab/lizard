@@ -9,7 +9,11 @@ ls /dev/tty* (look for /dev/ttyUSB0 or /dev/ttyACM0).
 
 docker run -it -v ~/lizard:/project --device=/dev/ttyACM0 espressif/idf:release-v5.5
 
+./build.py esp32s3 --clean
+
 ./espresso.py -d flash /dev/ttyACM0 
+
+./espresso.py --chip esp32s3 flash /dev/ttyACM0
 
 
 # Lizard: Hardware Control Language
