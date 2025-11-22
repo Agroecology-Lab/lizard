@@ -19,6 +19,8 @@ idf.py -C components create-component esp32-serial-flasher
 
 ls /dev/tty* (look for /dev/ttyUSB0 or /dev/ttyACM0).
 
+sudo chmod a+rw /dev/ttyACM0
+
 docker run -it -v ~/lizard:/project --device=/dev/ttyACM0 espressif/idf:release-v5.3
 
 Comment line 64 of  https://github.com/zauberzeug/lizard/blob/ad9cc54b0392ea455f1887ce2cca044e9917d977/main/utils/ble_command.cpp#L64:  /*    pin = static_cast<std::uint32_t>(CONFIG_ZZ_BLE_DEV_PIN); */
@@ -26,8 +28,6 @@ Comment line 64 of  https://github.com/zauberzeug/lizard/blob/ad9cc54b0392ea455f
 cd project
 
 ./build.py esp32s3 --clean
-
-./espresso.py -d flash /dev/ttyACM0 
 
 ./espresso.py --chip esp32s3 flash /dev/ttyACM0
 
