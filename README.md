@@ -19,11 +19,16 @@ cd ..
 
 idf.py -C components create-component esp32-serial-flasher
 
+git submodule update --init --recursive
+
+
 ls /dev/tty* (look for /dev/ttyUSB0 or /dev/ttyACM0).
 
 sudo chmod a+rw /dev/ttyACM0
 
 docker run -it -v ~/lizard:/project --device=/dev/ttyACM0 espressif/idf:release-v5.3
+
+python3 -m pip install -r requirements.txt
 
 Comment line 64 of  https://github.com/zauberzeug/lizard/blob/ad9cc54b0392ea455f1887ce2cca044e9917d977/main/utils/ble_command.cpp#L64:  /*    pin = static_cast<std::uint32_t>(CONFIG_ZZ_BLE_DEV_PIN); */
 
