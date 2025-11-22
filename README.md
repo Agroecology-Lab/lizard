@@ -9,6 +9,8 @@ rm -r esp32-zeug
 
 rm -r esp32-serial-flasher
 
+sudo apt-get install python3-prompt-toolkit
+
 git clone https://github.com/zauberzeug/esp32-zeug
 
 git clone https://github.com/zauberzeug/esp-serial-flasher
