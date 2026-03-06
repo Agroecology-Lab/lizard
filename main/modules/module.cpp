@@ -2,6 +2,40 @@
 #include "../global.h"
 #include "../utils/string_utils.h"
 #include "../utils/uart.h"
+<<<<<<< HEAD
+=======
+#include "analog.h"
+#include "analog_unit.h"
+#include "bluetooth.h"
+#include "can.h"
+#include "canopen_master.h"
+#include "canopen_motor.h"
+#include "d1_motor.h"
+#include "driver/gpio.h"
+#include "driver/ledc.h"
+#include "dunker_motor.h"
+#include "dunker_wheels.h"
+#include "expander.h"
+#include "imu.h"
+#include "input.h"
+#include "linear_motor.h"
+#include "mcp23017.h"
+#include "motor_axis.h"
+#include "odrive_motor.h"
+#include "odrive_wheels.h"
+#include "output.h"
+#include "pwm_output.h"
+#include "rmd_motor.h"
+#include "rmd_pair.h"
+#include "roboclaw.h"
+#include "roboclaw_motor.h"
+#include "roboclaw_wheels.h"
+#include "serial.h"
+#include "serial_bus.h"
+#include "stepper_motor.h"
+#include "temperature_sensor.h"
+#include "zio_motor.h"
+>>>>>>> d88f83d (Add ZioMotor module for Zio 4-channel DC motor controller)
 #include <stdarg.h>
 #include <typeinfo>
 
@@ -44,9 +78,327 @@ Module_ptr Module::create(const std::string type,
                           const std::string name,
                           const std::vector<ConstExpression_ptr> arguments,
                           MessageHandler message_handler) {
+<<<<<<< HEAD
     const auto &registry = get_registry();
     const auto it = registry.find(type);
     if (it == registry.end()) {
+=======
+    if (type == "Core") {
+        throw std::runtime_error("creating another core module is forbidden");
+    } else if (type == "Expander") {
+        if (arguments.size() != 1 && arguments.size() != 3) {
+            throw std::runtime_error("unexpected number of arguments");
+        }
+        Module::expect(arguments, -1, identifier, integer, integer);
+        std::string serial_name = arguments[0]->evaluate_identifier();
+        Module_ptr module = Global::get_module(serial_name);
+        if (module->type != serial) {
+            throw std::runtime_error("module \"" + serial_name + "\" is no serial connection");
+        }
+        const ConstSerial_ptr serial = std::static_pointer_cast<const Serial>(module);
+        const gpio_num_t boot_pin = arguments.size() > 1 ? (gpio_num_t)arguments[1]->evaluate_integer() : GPIO_NUM_NC;
+        const gpio_num_t enable_pin = arguments.size() > 2 ? (gpio_num_t)arguments[2]->evaluate_integer() : GPIO_NUM_NC;
+        return std::make_shared<Expander>(name, serial, boot_pin, enable_pin, message_handler);
+    } else if (type == "SerialBus") {
+        Module::expect(arguments, 2, identifier, integer);
+        const std::string serial_name = arguments[0]->evaluate_identifier();
+        Module_ptr module = Global::get_module(serial_name);
+        if (module->type != serial) {
+            throw std::runtime_error("module \"" + serial_name + "\" is no serial connection");
+        }
+        const ConstSerial_ptr serial_module = std::static_pointer_cast<const Serial>(module);
+        const long node_id = arguments[1]->evaluate_integer();
+        if (node_id <= 0 || node_id >= 255) {
+            throw std::runtime_error("node ID must be between 0 and 255");
+        }
+        return std::make_shared<SerialBus>(name, serial_module, node_id);
+    } else if (type == "Bluetooth") {
+        Module::expect(arguments, 1, string);
+        std::string device_name = arguments[0]->evaluate_string();
+        return std::make_shared<Bluetooth>(name, device_name, message_handler);
+    } else if (type == "Output") {
+        if (arguments.size() == 1) {
+            Module::expect(arguments, 1, integer);
+            return std::make_shared<GpioOutput>(name, (gpio_num_t)arguments[0]->evaluate_integer());
+        } else {
+            Module::expect(arguments, 2, identifier, integer);
+            std::string mcp_name = arguments[0]->evaluate_identifier();
+            Module_ptr module = Global::get_module(mcp_name);
+            if (module->type != mcp23017) {
+                throw std::runtime_error("module \"" + mcp_name + "\" is no mcp23017 port expander");
+            }
+            const Mcp23017_ptr mcp = std::static_pointer_cast<Mcp23017>(module);
+            return std::make_shared<McpOutput>(name, mcp, arguments[1]->evaluate_integer());
+        }
+    } else if (type == "Input") {
+        if (arguments.size() == 1) {
+            Module::expect(arguments, 1, integer);
+            return std::make_shared<GpioInput>(name, (gpio_num_t)arguments[0]->evaluate_integer());
+        } else {
+            Module::expect(arguments, 2, identifier, integer);
+            std::string mcp_name = arguments[0]->evaluate_identifier();
+            Module_ptr module = Global::get_module(mcp_name);
+            if (module->type != mcp23017) {
+                throw std::runtime_error("module \"" + mcp_name + "\" is no mcp23017 port expander");
+            }
+            const Mcp23017_ptr mcp = std::static_pointer_cast<Mcp23017>(module);
+            return std::make_shared<McpInput>(name, mcp, arguments[1]->evaluate_integer());
+        }
+    } else if (type == "PwmOutput") {
+        if (arguments.size() < 1 || arguments.size() > 3) {
+            throw std::runtime_error("unexpected number of arguments");
+        }
+        Module::expect(arguments, -1, integer, integer, integer);
+        gpio_num_t pin = (gpio_num_t)arguments[0]->evaluate_integer();
+        ledc_timer_t ledc_timer = arguments.size() > 1 ? (ledc_timer_t)arguments[1]->evaluate_integer() : LEDC_TIMER_0;
+        ledc_channel_t ledc_channel = arguments.size() > 2 ? (ledc_channel_t)arguments[2]->evaluate_integer() : LEDC_CHANNEL_0;
+        return std::make_shared<PwmOutput>(name, pin, ledc_timer, ledc_channel);
+    } else if (type == "Mcp23017") {
+        if (arguments.size() > 5) {
+            throw std::runtime_error("unexpected number of arguments");
+        }
+        Module::expect(arguments, -1, integer, integer, integer, integer, integer);
+        i2c_port_t port = arguments.size() > 0 ? (i2c_port_t)arguments[0]->evaluate_integer() : I2C_NUM_0;
+        gpio_num_t sda_pin = arguments.size() > 1 ? (gpio_num_t)arguments[1]->evaluate_integer() : DEFAULT_SDA_PIN;
+        gpio_num_t scl_pin = arguments.size() > 2 ? (gpio_num_t)arguments[2]->evaluate_integer() : DEFAULT_SCL_PIN;
+        uint8_t address = arguments.size() > 3 ? arguments[3]->evaluate_integer() : 0x20;
+        int clk_speed = arguments.size() > 4 ? arguments[4]->evaluate_integer() : 100000;
+        return std::make_shared<Mcp23017>(name, port, sda_pin, scl_pin, address, clk_speed);
+    } else if (type == "Imu") {
+        if (arguments.size() > 5) {
+            throw std::runtime_error("unexpected number of arguments");
+        }
+        Module::expect(arguments, -1, integer, integer, integer, integer, integer);
+        i2c_port_t port = arguments.size() > 0 ? (i2c_port_t)arguments[0]->evaluate_integer() : I2C_NUM_0;
+        gpio_num_t sda_pin = arguments.size() > 1 ? (gpio_num_t)arguments[1]->evaluate_integer() : DEFAULT_SDA_PIN;
+        gpio_num_t scl_pin = arguments.size() > 2 ? (gpio_num_t)arguments[2]->evaluate_integer() : DEFAULT_SCL_PIN;
+        uint8_t address = arguments.size() > 3 ? arguments[3]->evaluate_integer() : 0x28;
+        int clk_speed = arguments.size() > 4 ? arguments[4]->evaluate_integer() : 100000;
+        return std::make_shared<Imu>(name, port, sda_pin, scl_pin, address, clk_speed);
+    } else if (type == "Can") {
+        Module::expect(arguments, 3, integer, integer, integer, integer);
+        gpio_num_t rx_pin = (gpio_num_t)arguments[0]->evaluate_integer();
+        gpio_num_t tx_pin = (gpio_num_t)arguments[1]->evaluate_integer();
+        long baud_rate = arguments[2]->evaluate_integer();
+        return std::make_shared<Can>(name, rx_pin, tx_pin, baud_rate);
+    } else if (type == "LinearMotor") {
+        if (arguments.size() == 4) {
+            Module::expect(arguments, 4, integer, integer, integer, integer);
+            gpio_num_t move_in = (gpio_num_t)arguments[0]->evaluate_integer();
+            gpio_num_t move_out = (gpio_num_t)arguments[1]->evaluate_integer();
+            gpio_num_t end_in = (gpio_num_t)arguments[2]->evaluate_integer();
+            gpio_num_t end_out = (gpio_num_t)arguments[3]->evaluate_integer();
+            return std::make_shared<GpioLinearMotor>(name, move_in, move_out, end_in, end_out);
+        } else {
+            Module::expect(arguments, 5, identifier, integer, integer, integer, integer);
+            std::string mcp_name = arguments[0]->evaluate_identifier();
+            Module_ptr module = Global::get_module(mcp_name);
+            if (module->type != mcp23017) {
+                throw std::runtime_error("module \"" + mcp_name + "\" is no mcp23017 port expander");
+            }
+            const Mcp23017_ptr mcp = std::static_pointer_cast<Mcp23017>(module);
+            uint8_t move_in = (gpio_num_t)arguments[1]->evaluate_integer();
+            uint8_t move_out = (gpio_num_t)arguments[2]->evaluate_integer();
+            uint8_t end_in = (gpio_num_t)arguments[3]->evaluate_integer();
+            uint8_t end_out = (gpio_num_t)arguments[4]->evaluate_integer();
+            return std::make_shared<McpLinearMotor>(name, mcp, move_in, move_out, end_in, end_out);
+        }
+    } else if (type == "ODriveMotor") {
+        if (arguments.size() < 2 || arguments.size() > 3) {
+            throw std::runtime_error("unexpected number of arguments");
+        }
+        Module::expect(arguments, -1, identifier, integer, integer);
+        std::string can_name = arguments[0]->evaluate_identifier();
+        Module_ptr module = Global::get_module(can_name);
+        if (module->type != can) {
+            throw std::runtime_error("module \"" + can_name + "\" is no can connection");
+        }
+        const Can_ptr can = std::static_pointer_cast<Can>(module);
+        uint32_t can_id = arguments[1]->evaluate_integer();
+        int version = arguments.size() > 2 ? arguments[2]->evaluate_integer() : 4;
+        ODriveMotor_ptr odrive_motor = std::make_shared<ODriveMotor>(name, can, can_id, version);
+        odrive_motor->subscribe_to_can();
+        return odrive_motor;
+    } else if (type == "ODriveWheels") {
+        Module::expect(arguments, 2, identifier, identifier);
+        std::string left_name = arguments[0]->evaluate_identifier();
+        std::string right_name = arguments[1]->evaluate_identifier();
+        Module_ptr left_module = Global::get_module(left_name);
+        Module_ptr right_module = Global::get_module(right_name);
+        if (left_module->type != odrive_motor) {
+            throw std::runtime_error("module \"" + left_name + "\" is no ODrive motor");
+        }
+        if (right_module->type != odrive_motor) {
+            throw std::runtime_error("module \"" + right_name + "\" is no ODrive motor");
+        }
+        const ODriveMotor_ptr left_motor = std::static_pointer_cast<ODriveMotor>(left_module);
+        const ODriveMotor_ptr right_motor = std::static_pointer_cast<ODriveMotor>(right_module);
+        return std::make_shared<ODriveWheels>(name, left_motor, right_motor);
+    } else if (type == "RmdMotor") {
+        Module::expect(arguments, 3, identifier, integer, integer);
+        std::string can_name = arguments[0]->evaluate_identifier();
+        Module_ptr module = Global::get_module(can_name);
+        if (module->type != can) {
+            throw std::runtime_error("module \"" + can_name + "\" is no can connection");
+        }
+        const Can_ptr can = std::static_pointer_cast<Can>(module);
+        uint8_t motor_id = arguments[1]->evaluate_integer();
+        int ratio = arguments[2]->evaluate_integer();
+        RmdMotor_ptr rmd_motor = std::make_shared<RmdMotor>(name, can, motor_id, ratio);
+        rmd_motor->subscribe_to_can();
+        return rmd_motor;
+    } else if (type == "RmdPair") {
+        Module::expect(arguments, 2, identifier, identifier);
+        std::string rmd1_name = arguments[0]->evaluate_identifier();
+        Module_ptr module1 = Global::get_module(rmd1_name);
+        if (module1->type != rmd_motor) {
+            throw std::runtime_error("module \"" + rmd1_name + "\" is no RMD motor");
+        }
+        const RmdMotor_ptr rmd1 = std::static_pointer_cast<RmdMotor>(module1);
+        std::string rmd2_name = arguments[1]->evaluate_identifier();
+        Module_ptr module2 = Global::get_module(rmd2_name);
+        if (module2->type != rmd_motor) {
+            throw std::runtime_error("module \"" + rmd2_name + "\" is no RMD motor");
+        }
+        const RmdMotor_ptr rmd2 = std::static_pointer_cast<RmdMotor>(module2);
+        return std::make_shared<RmdPair>(name, rmd1, rmd2);
+    } else if (type == "Serial") {
+        Module::expect(arguments, 4, integer, integer, integer, integer);
+        gpio_num_t rx_pin = (gpio_num_t)arguments[0]->evaluate_integer();
+        gpio_num_t tx_pin = (gpio_num_t)arguments[1]->evaluate_integer();
+        long baud_rate = arguments[2]->evaluate_integer();
+        uart_port_t uart_num = (uart_port_t)arguments[3]->evaluate_integer();
+        return std::make_shared<Serial>(name, rx_pin, tx_pin, baud_rate, uart_num);
+    } else if (type == "RoboClaw") {
+        Module::expect(arguments, 2, identifier, integer);
+        std::string serial_name = arguments[0]->evaluate_identifier();
+        Module_ptr module = Global::get_module(serial_name);
+        if (module->type != serial) {
+            throw std::runtime_error("module \"" + serial_name + "\" is no serial connection");
+        }
+        const ConstSerial_ptr serial = std::static_pointer_cast<const Serial>(module);
+        uint8_t address = arguments[1]->evaluate_integer();
+        return std::make_shared<RoboClaw>(name, serial, address);
+    } else if (type == "RoboClawMotor") {
+        Module::expect(arguments, 2, identifier, integer);
+        std::string roboclaw_name = arguments[0]->evaluate_identifier();
+        Module_ptr module = Global::get_module(roboclaw_name);
+        if (module->type != roboclaw) {
+            throw std::runtime_error("module \"" + roboclaw_name + "\" is no RoboClaw");
+        }
+        const RoboClaw_ptr roboclaw = std::static_pointer_cast<RoboClaw>(module);
+        int64_t motor_number = arguments[1]->evaluate_integer();
+        return std::make_shared<RoboClawMotor>(name, roboclaw, motor_number);
+    } else if (type == "RoboClawWheels") {
+        Module::expect(arguments, 2, identifier, identifier);
+        const RoboClawMotor_ptr left_motor = get_module_paramter<RoboClawMotor>(arguments[0], roboclaw_motor, "roboclaw motor");
+        const RoboClawMotor_ptr right_motor = get_module_paramter<RoboClawMotor>(arguments[1], roboclaw_motor, "roboclaw motor");
+        return std::make_shared<RoboClawWheels>(name, left_motor, right_motor);
+    } else if (type == "StepperMotor") {
+        if (arguments.size() < 2 || arguments.size() > 4) {
+            throw std::runtime_error("unexpected number of arguments");
+        }
+        Module::expect(arguments, -1, integer, integer, integer, integer);
+        gpio_num_t step_pin = (gpio_num_t)arguments[0]->evaluate_integer();
+        gpio_num_t dir_pin = (gpio_num_t)arguments[1]->evaluate_integer();
+        ledc_timer_t ledc_timer = arguments.size() > 2 ? (ledc_timer_t)arguments[2]->evaluate_integer() : LEDC_TIMER_0;
+        ledc_channel_t ledc_channel = arguments.size() > 3 ? (ledc_channel_t)arguments[3]->evaluate_integer() : LEDC_CHANNEL_0;
+        return std::make_shared<StepperMotor>(name, step_pin, dir_pin, ledc_timer, ledc_channel);
+    } else if (type == "MotorAxis") {
+        Module::expect(arguments, 3, identifier, identifier, identifier);
+        const std::string name = arguments[0]->evaluate_identifier();
+        Module_ptr module = Global::get_module(name);
+        Motor_ptr motor;
+        // TODO: rmd_motor, roboclaw_motor
+        if (module->type == odrive_motor) {
+            motor = get_module_paramter<ODriveMotor>(arguments[0], odrive_motor, "odrive_motor");
+        } else if (module->type == stepper_motor) {
+            motor = get_module_paramter<StepperMotor>(arguments[0], stepper_motor, "stepper_motor");
+        } else if (module->type == canopen_motor) {
+            motor = get_module_paramter<CanOpenMotor>(arguments[0], canopen_motor, "canopen_motor");
+        } else {
+            throw std::runtime_error("module \"" + name + "\" is not a supported motor for MotorAxis");
+        }
+        const Input_ptr input1 = get_module_paramter<Input>(arguments[1], input, "input");
+        const Input_ptr input2 = get_module_paramter<Input>(arguments[2], input, "input");
+        return std::make_shared<MotorAxis>(name, motor, input1, input2);
+    } else if (type == "CanOpenMotor") {
+        Module::expect(arguments, 2, identifier, integer);
+        const Can_ptr can_module = get_module_paramter<Can>(arguments[0], can, "can connection");
+        const int64_t node_id = arguments[1]->evaluate_integer();
+        CanOpenMotor_ptr motor = std::make_shared<CanOpenMotor>(name, can_module, node_id);
+        motor->subscribe_to_can();
+        return motor;
+    } else if (type == "CanOpenMaster") {
+        Module::expect(arguments, 1, identifier);
+        const Can_ptr can_module = get_module_paramter<Can>(arguments[0], can, "can connection");
+        return std::make_shared<CanOpenMaster>(name, can_module);
+    } else if (type == "D1Motor") {
+        Module::expect(arguments, 2, identifier, integer);
+        const Can_ptr can_module = get_module_paramter<Can>(arguments[0], can, "can connection");
+        const int64_t node_id = arguments[1]->evaluate_integer();
+        D1Motor_ptr motor = std::make_shared<D1Motor>(name, can_module, node_id);
+        motor->subscribe_to_can();
+        return motor;
+    } else if (type == "DunkerMotor") {
+        Module::expect(arguments, 2, identifier, integer);
+        const Can_ptr can_module = get_module_paramter<Can>(arguments[0], can, "can connection");
+        const int64_t node_id = arguments[1]->evaluate_integer();
+        DunkerMotor_ptr motor = std::make_shared<DunkerMotor>(name, can_module, node_id);
+        motor->subscribe_to_can();
+        return motor;
+    } else if (type == "DunkerWheels") {
+        Module::expect(arguments, 2, identifier, identifier);
+        std::string left_name = arguments[0]->evaluate_identifier();
+        std::string right_name = arguments[1]->evaluate_identifier();
+        Module_ptr left_module = Global::get_module(left_name);
+        Module_ptr right_module = Global::get_module(right_name);
+        if (left_module->type != dunker_motor) {
+            throw std::runtime_error("module \"" + left_name + "\" is no Dunker motor");
+        }
+        if (right_module->type != dunker_motor) {
+            throw std::runtime_error("module \"" + right_name + "\" is no Dunker motor");
+        }
+        const DunkerMotor_ptr left_motor = std::static_pointer_cast<DunkerMotor>(left_module);
+        const DunkerMotor_ptr right_motor = std::static_pointer_cast<DunkerMotor>(right_module);
+        return std::make_shared<DunkerWheels>(name, left_motor, right_motor);
+    } else if (type == "Analog") {
+        if (arguments.size() < 2 || arguments.size() > 3) {
+            throw std::runtime_error("unexpected number of arguments");
+        }
+        Module::expect(arguments, -1, identifier, integer, numbery);
+        const AnalogUnit_ptr unit = get_module_paramter<AnalogUnit>(arguments[0], analog_unit, "analog unit");
+        const gpio_num_t pin = (gpio_num_t)arguments[1]->evaluate_integer();
+        const float attenuation = arguments.size() > 2 ? arguments[2]->evaluate_number() : 12;
+        return std::make_shared<Analog>(name, unit, pin, attenuation);
+    } else if (type == "TemperatureSensor") {
+        if (arguments.size() < 3 || arguments.size() > 4) {
+            throw std::runtime_error("unexpected number of arguments");
+        }
+        Module::expect(arguments, -1, identifier, integer, integer, numbery);
+        const AnalogUnit_ptr unit = get_module_paramter<AnalogUnit>(arguments[0], analog_unit, "analog unit");
+        const gpio_num_t temp_pin = (gpio_num_t)arguments[1]->evaluate_integer();
+        const gpio_num_t ref_pin = (gpio_num_t)arguments[2]->evaluate_integer();
+        const float attenuation = arguments.size() > 3 ? arguments[3]->evaluate_number() : 12;
+        return std::make_shared<TemperatureSensor>(name, unit, temp_pin, ref_pin, attenuation);
+    } else if (type == "AnalogUnit") {
+        Module::expect(arguments, 1, integer);
+        const uint8_t unit_id = arguments[0]->evaluate_integer();
+        return std::make_shared<AnalogUnit>(name, unit_id);
+    } else if (type == "ZioMotor") {
+        if (arguments.size() > 6) {
+            throw std::runtime_error("unexpected number of arguments");
+        }
+        Module::expect(arguments, -1, integer, integer, integer, integer, integer, numbery);
+        i2c_port_t port       = arguments.size() > 0 ? (i2c_port_t)arguments[0]->evaluate_integer() : I2C_NUM_0;
+        gpio_num_t sda_pin    = arguments.size() > 1 ? (gpio_num_t)arguments[1]->evaluate_integer() : DEFAULT_SDA_PIN;
+        gpio_num_t scl_pin    = arguments.size() > 2 ? (gpio_num_t)arguments[2]->evaluate_integer() : DEFAULT_SCL_PIN;
+        uint8_t address       = arguments.size() > 3 ? (uint8_t)arguments[3]->evaluate_integer() : 0x40;
+        int clk_speed         = arguments.size() > 4 ? (int)arguments[4]->evaluate_integer() : 100000;
+        float pwm_frequency   = arguments.size() > 5 ? (float)arguments[5]->evaluate_number() : 1000.0f;
+        return std::make_shared<ZioMotor>(name, port, sda_pin, scl_pin, address, clk_speed, pwm_frequency);
+    } else {
+>>>>>>> d88f83d (Add ZioMotor module for Zio 4-channel DC motor controller)
         throw std::runtime_error("unknown module type \"" + type + "\"");
     }
     return it->second.factory(name, arguments, message_handler);

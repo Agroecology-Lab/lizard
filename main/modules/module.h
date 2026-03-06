@@ -9,6 +9,51 @@
 #include <string>
 #include <vector>
 
+<<<<<<< HEAD
+=======
+#define REGISTER_MODULE_DEFAULTS(module_name)                                   \
+    namespace {                                                                 \
+    struct RegisterDefaults {                                                   \
+        RegisterDefaults() {                                                    \
+            Module::register_defaults(#module_name, module_name::get_defaults); \
+        }                                                                       \
+    } register_defaults;                                                        \
+    } // namespace
+
+enum ModuleType {
+    bluetooth,
+    core,
+    expander,
+    input,
+    output,
+    pwm_output,
+    mcp23017,
+    imu,
+    can,
+    serial,
+    odrive_motor,
+    odrive_wheels,
+    rmd_motor,
+    rmd_pair,
+    roboclaw,
+    roboclaw_motor,
+    roboclaw_wheels,
+    stepper_motor,
+    motor_axis,
+    canopen_motor,
+    canopen_master,
+    d1_motor,
+    dunker_motor,
+    dunker_wheels,
+    analog,
+    analog_unit,
+    temperature_sensor,
+    proxy,
+    serial_bus,
+    zio_motor,
+};
+
+>>>>>>> d88f83d (Add ZioMotor module for Zio 4-channel DC motor controller)
 class Module;
 using Module_ptr = std::shared_ptr<Module>;
 using ConstModule_ptr = std::shared_ptr<const Module>;
