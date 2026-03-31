@@ -31,6 +31,11 @@ docker run -it --rm -v $(pwd):/project -w /project espressif/idf:v5.3.1 /bin/bas
     echo 'CONFIG_PARTITION_TABLE_SINGLE_APP_LARGE=y' >> sdkconfig &&
     idf.py build"
 
+docker run -it --rm -v $(pwd):/project -w /project espressif/idf:v5.3.1 /bin/bash -c "
+    echo 'CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y' >> sdkconfig &&
+    echo 'CONFIG_ESPTOOLPY_FLASHSIZE=\"8MB\"' >> sdkconfig &&
+    idf.py build"
+
 ```
 
 flash
