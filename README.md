@@ -46,6 +46,13 @@ esptool.py --chip esp32s3 --port /dev/ttyACM0 --baud 921600 write_flash \
 0x8000 build/partition_table/partition-table.bin \
 0x10000 build/lizard.bin
 ```
+Log
+```
+docker run -it --rm --device=/dev/ttyACM0 -v $(pwd):/project -w /project espressif/idf:v5.3.1 \
+bash -c "idf.py monitor 2>&1 | tee full_debug.log"
+```
+
+./monitor.py /dev/ttyACM0
 
 
 See also https://lizard.dev/getting_started/
