@@ -20,7 +20,7 @@ echo "CONFIG_BT_NIMBLE_ENABLED=y" >> sdkconfig.defaults.esp32s3
 git config --global --add safe.directory '*'
 pip install -r requirements.txt --break-system-packages
 git submodule update --init --recursive
-./compile.sh esp32s3
+docker run -it --rm -v $(pwd):/project -w /project espressif/idf:v5.3.1 /bin/bash -c "idf.py set-target esp32s3 && idf.py build"
 ```
 
 See https://lizard.dev/getting_started/
