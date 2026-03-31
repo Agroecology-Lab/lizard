@@ -14,6 +14,8 @@ cd lizard
 sudo rm -f sdkconfig
 echo "CONFIG_COMPILER_CXX_EXCEPTIONS=y" >> sdkconfig.defaults.esp32s3
 echo "CONFIG_COMPILER_CXX_EXCEPTIONS=y" >> sdkconfig.defaults.esp32
+echo "CONFIG_BT_ENABLED=y" >> sdkconfig.defaults.esp32s3
+echo "CONFIG_BT_NIMBLE_ENABLED=y" >> sdkconfig.defaults.esp32s3
 git config --global --add safe.directory '*'
 pip install -r requirements.txt --break-system-packages
 git submodule update --init --recursive
