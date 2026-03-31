@@ -8,11 +8,16 @@ You can think of the microcontroller as the machine's lizard brain which ensures
 The full documentation is available on https://lizard.dev.
 
 ## Getting Started
-
+```
 git clone https://github.com/Agroecology-Lab/lizard.git
 cd lizard
+sudo rm -f sdkconfig
+echo "CONFIG_COMPILER_CXX_EXCEPTIONS=y" >> sdkconfig.defaults.esp32s3
+echo "CONFIG_COMPILER_CXX_EXCEPTIONS=y" >> sdkconfig.defaults.esp32
+git config --global --add safe.directory '*'
 pip install -r requirements.txt --break-system-packages
+git submodule update --init --recursive
 ./compile.sh esp32s3
-
+```
 
 See https://lizard.dev/getting_started/
