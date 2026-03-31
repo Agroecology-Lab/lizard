@@ -35,7 +35,6 @@ EOF
 echo "CONFIG_ZZ_BLE_DEV_PIN=123456" >> sdkconfig.defaults.esp32s3
 docker run -it --rm -v $(pwd):/project -w /project espressif/idf:v5.3.1 idf.py set-target esp32s3
 docker run -it --rm -v $(pwd):/project -w /project espressif/idf:v5.3.1 idf.py build
-
 # 1. Force the NimBLE and PIN configs into the S3 defaults file
 cat >> sdkconfig.defaults.esp32s3 <<EOF
 CONFIG_BT_ENABLED=y
@@ -43,15 +42,27 @@ CONFIG_BT_NIMBLE_ENABLED=y
 CONFIG_BT_NIMBLE_MAX_BONDS=15
 CONFIG_ZZ_BLE_DEV_PIN=123456
 EOF
-
 # 2. Reset the target to force a merge of these new defaults
 docker run -it --rm -v $(pwd):/project -w /project espressif/idf:v5.3.1 idf.py set-target esp32s3
-
 # 3. Final Build
 docker run -it --rm -v $(pwd):/project -w /project espressif/idf:v5.3.1 idf.py build
 ```
 
+```
+# 1. Force the Bluetooth and PIN settings into the S3 defaults file
+cat >> sdkconfig.defaults.esp32s3 <<EOF
+CONFIG_BT_ENABLED=y
+CONFIG_BT_NIMBLE_ENABLED=y
+CONFIG_BT_NIMBLE_MAX_BONDS=15
+CONFIG_ZZ_BLE_DEV_PIN=123456
+EOF
 
+# 2. Reset the target (this forces the build system to merge the new defaults)
+docker run -it --rm -v $(pwd):/project -w /project espressif/idf:v5.3.1 idf.py set-target esp32s3
+
+# 3. Final Build attempt
+docker run -it --rm -v $(pwd):/project -w /project espressif/idf:v5.3.1 idf.py build
+```
 
 
 See https://lizard.dev/getting_started/
