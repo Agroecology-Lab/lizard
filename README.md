@@ -9,4 +9,10 @@ The full documentation is available on https://lizard.dev.
 
 ## Getting Started
 
+git clone https://github.com/Agroecology-Lab/lizard.git
+cd lizard
+pip install -r requirements.txt --break-system-packages
+./compile.sh esp32s3
+
+
 See https://lizard.dev/getting_started/
