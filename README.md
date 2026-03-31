@@ -33,10 +33,5 @@ docker run -it --rm -v $(pwd):/project -w /project espressif/idf:v5.3.1 /bin/bas
 
 ```
 
-# Force the Bluetooth stack to 'On'
-echo "CONFIG_BT_ENABLED=y" >> sdkconfig
-echo "CONFIG_BT_NIMBLE_ENABLED=y" >> sdkconfig
-```
 
-
-See https://lizard.dev/getting_started/
+See also https://lizard.dev/getting_started/
