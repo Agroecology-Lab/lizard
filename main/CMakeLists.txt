@@ -34,3 +34,4 @@ idf_component_register(
 add_compile_definitions(OWL_TOKEN_RUN_LENGTH=256)
 component_compile_options(-std=gnu++17 -Wsuggest-override)
 set_source_files_properties(parser.c PROPERTIES COMPILE_FLAGS -Wno-missing-field-initializers)
+target_compile_options(${COMPONENT_LIB} PRIVATE "-fexceptions")
