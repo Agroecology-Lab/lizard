@@ -22,9 +22,7 @@ idf_component_register(
         "/opt/esp/idf/components/bt/host/nimble/port/include"
         # --- NimBLE OS & Transport Layer ---
         "/opt/esp/idf/components/bt/host/nimble/nimble/porting/npl/freertos/include"
-        "/opt/esp/idf/components/bt/host/nimble/nimble/nimble/transport/include" # <--- THE FIX
-        # --- ESP32S3 Controller Glue ---
-        "/opt/esp/idf/components/bt/include/esp32s3"
+        "/opt/esp/idf/components/bt/host/nimble/nimble/nimble/transport/include"
 
     REQUIRES
         app_update
