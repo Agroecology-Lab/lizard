@@ -8,7 +8,7 @@ file(GLOB SRC_FILES
 
 idf_component_register(
     SRCS ${SRC_FILES}
-    INCLUDE_DIRS "." "compilation" "modules" "utils" "${CMAKE_BINARY_DIR}/generated"
+    INCLUDE_DIRS "." "compilation" "modules" "utils" "${CMAKE_BINARY_DIR}/generated" "$ENV{IDF_PATH}/components/bt/host/nimble/nimble/nimble/host/include"
     REQUIRES
         app_update
         bno08x_driver
