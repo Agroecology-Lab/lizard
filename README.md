@@ -12,6 +12,7 @@ The full documentation is available on https://lizard.dev.
 git clone https://github.com/Agroecology-Lab/lizard.git
 cd lizard
 sudo rm -f sdkconfig
+docker run -it --rm -v $(pwd):/project -w /project espressif/idf:v5.3.1 idf.py set-target esp32s3
 echo "CONFIG_COMPILER_CXX_EXCEPTIONS=y" >> sdkconfig.defaults.esp32s3
 echo "CONFIG_COMPILER_CXX_EXCEPTIONS=y" >> sdkconfig.defaults.esp32
 echo "CONFIG_BT_ENABLED=y" >> sdkconfig.defaults.esp32s3
