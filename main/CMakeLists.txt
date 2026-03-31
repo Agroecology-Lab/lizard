@@ -8,7 +8,24 @@ file(GLOB SRC_FILES
 
 idf_component_register(
     SRCS ${SRC_FILES}
-    INCLUDE_DIRS "." "compilation" "modules" "utils" "${CMAKE_BINARY_DIR}/generated" "$ENV{IDF_PATH}/components/bt/host/nimble/nimble/nimble/host/include"
+	INCLUDE_DIRS 
+        "." 
+        "compilation" 
+        "modules" 
+        "utils" 
+        "${CMAKE_BINARY_DIR}/generated"
+        # --- NimBLE Core & Host ---
+        "/opt/esp/idf/components/bt/host/nimble/nimble/nimble/include"
+        "/opt/esp/idf/components/bt/host/nimble/nimble/nimble/host/include"
+        # --- NimBLE Porting & Config ---
+        "/opt/esp/idf/components/bt/host/nimble/nimble/porting/nimble/include"
+        "/opt/esp/idf/components/bt/host/nimble/port/include"
+        # --- NimBLE OS & Transport Layer ---
+        "/opt/esp/idf/components/bt/host/nimble/nimble/porting/npl/freertos/include"
+        "/opt/esp/idf/components/bt/host/nimble/nimble/nimble/transport/include" # <--- THE FIX
+        # --- ESP32S3 Controller Glue ---
+        "/opt/esp/idf/components/bt/include/esp32s3"
+
     REQUIRES
         app_update
         bno08x_driver
