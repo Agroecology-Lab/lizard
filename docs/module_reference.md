@@ -37,8 +37,10 @@ It is automatically created right after the boot sequence.
 | `core.set_pin_level(pin, value)` | Turns the pin into an output and sets its level    | `int`, `int` |
 | `core.get_pin_strapping(pin)`    | Print value of the pin from the strapping register | `int`        |
 | `core.forget_serial_bus()`       | Remove the saved SerialBus configuration from NVS  |              |
+| `core.set_baudrate(baud)`        | Persist UART0 baud rate (applied after restart)    | `int`        |
 | `core.pause_broadcasts()`        | Pause property broadcasts (all modules)            |              |
 | `core.resume_broadcasts()`       | Resume property broadcasts                         |              |
+| `core.clear_schedule()`          | Discard all pending scheduled blocks               |              |
 | `core.keep_alive()`              | Reset `last_message_age` without producing output  |              |
 
 The output `format` is a string with multiple space-separated elements of the pattern `<module>.<property>[:<precision>]` or `<variable>[:<precision>]`.
@@ -46,6 +48,13 @@ The `precision` is an optional integer specifying the number of decimal places f
 For example, the format `"core.millis input.level motor.position:3"` might yield an output like `"92456 1 12.789"`.
 
 `core.get_pin_status(pin)` reads the pin's voltage, not the output state directly.
+
+**UART baud rate:**
+The console (UART0) defaults to 115200 baud.
+`core.set_baudrate(baud)` persists a new rate to non-volatile storage; it takes effect on the next restart, so the change is not a breaking one for hosts that are not updated yet.
+After `core.set_baudrate(921600)` followed by `core.restart()`, reconnect with the host tools at the new rate, e.g. `./monitor.py /dev/ttyUSB0 --baud 921600` (`monitor.py`, `configure.py` and `otb_update.py` all accept `--baud`, defaulting to 115200).
+Supported rates are 115200, 230400, 460800 and 921600.
+Note that the ROM bootloader and the early boot log always use 115200 regardless of this setting, so pre-application boot output will look garbled at higher rates.
 
 ## Bluetooth
 
@@ -523,12 +532,13 @@ The ODrive wheels module combines two ODrive motors and provides odometry and st
 | ----------------------------------------------- | ------------------------ | ------------------------ |
 | `wheels = ODriveWheels(left_motor, left_motor)` | Two ODrive motor modules | two ODrive motor modules |
 
-| Properties             | Description                    | Data type |
-| ---------------------- | ------------------------------ | --------- |
-| `wheels.width`         | Wheel distance (m)             | `float`   |
-| `wheels.linear_speed`  | Forward speed (m/s)            | `float`   |
-| `wheels.angular_speed` | Turning speed (rad/s)          | `float`   |
-| `wheels.enabled`       | Whether the wheels are enabled | `bool`    |
+| Properties             | Description                                              | Data type |
+| ---------------------- | -------------------------------------------------------- | --------- |
+| `wheels.width`         | Wheel distance (m)                                       | `float`   |
+| `wheels.linear_speed`  | Forward speed (m/s)                                      | `float`   |
+| `wheels.angular_speed` | Turning speed (rad/s)                                    | `float`   |
+| `wheels.enabled`       | Whether the wheels are enabled                           | `bool`    |
+| `wheels.locked`        | Whether driving is blocked (safety interlock, see below) | `bool`    |
 
 | Methods                         | Description                                     | Arguments        |
 | ------------------------------- | ----------------------------------------------- | ---------------- |
@@ -541,6 +551,15 @@ The ODrive wheels module combines two ODrive motors and provides odometry and st
 When the wheels are disabled, they will stop and ignore movement commands.
 This allows disabling the wheels permanently by setting `enabled = false` in conjunction with calling the `off()` method.
 Now the vehicle can be pushed manually with motors turned off, without taking care of every line of code potentially re-activating the motors.
+
+The `locked` property is a safety interlock for rules running on the microcontroller:
+while it is `true`, drive commands are ignored and the wheels are actively held at standstill with a zero-speed setpoint — the motors stay enabled.
+This lets a rule block driving while some other condition is unmet, for example while a tool is not in its parking position.
+The hold is sent when `locked` becomes `true` and refreshed about once per second, so it re-engages even if a motor controller restarts.
+`locked` only blocks commands: `disable()` still switches the motors off, and a locked but switched-off robot can be pushed by hand.
+While `locked` is `true`, `off()` does not stick — the hold re-engages within about a second; call `disable()` to switch the motors off durably.
+Driving resumes as soon as `locked` is `false` again.
+Writes to `locked` and `enabled` are forwarded to shadow modules, so shadowed wheels stop together with their master.
 
 ## RMD Motor
 
@@ -662,13 +681,14 @@ The RoboClaw wheels module combines two RoboClaw motors and provides odometry an
 | ------------------------------------------------- | --------------------- | -------------------------- |
 | `wheels = RoboClawWheels(left_motor, left_motor)` | left and right motors | two RoboClaw motor modules |
 
-| Properties             | Description                      | Data type |
-| ---------------------- | -------------------------------- | --------- |
-| `wheels.width`         | Wheel distance (m)               | `float`   |
-| `wheels.linear_speed`  | Forward speed (m/s)              | `float`   |
-| `wheels.angular_speed` | Turning speed (rad/s)            | `float`   |
-| `wheels.m_per_tick`    | Meters per encoder tick          | `float`   |
-| `wheels.enabled`       | Whether motors react to commands | `bool`    |
+| Properties             | Description                                              | Data type |
+| ---------------------- | -------------------------------------------------------- | --------- |
+| `wheels.width`         | Wheel distance (m)                                       | `float`   |
+| `wheels.linear_speed`  | Forward speed (m/s)                                      | `float`   |
+| `wheels.angular_speed` | Turning speed (rad/s)                                    | `float`   |
+| `wheels.m_per_tick`    | Meters per encoder tick                                  | `float`   |
+| `wheels.enabled`       | Whether motors react to commands                         | `bool`    |
+| `wheels.locked`        | Whether driving is blocked (safety interlock, see below) | `bool`    |
 
 | Methods                         | Description                                     | Arguments        |
 | ------------------------------- | ----------------------------------------------- | ---------------- |
@@ -679,6 +699,15 @@ The RoboClaw wheels module combines two RoboClaw motors and provides odometry an
 | `wheels.disable()`              | Disable both motors                             |                  |
 
 When the wheels are disabled, they will stop and ignore movement commands.
+
+The `locked` property is a safety interlock for rules running on the microcontroller:
+while it is `true`, drive commands are ignored and the wheels are actively held at standstill with a zero-speed setpoint — the motors stay enabled.
+This lets a rule block driving while some other condition is unmet, for example while a tool is not in its parking position.
+The hold is sent when `locked` becomes `true` and refreshed about once per second, so it re-engages even if a motor controller restarts.
+`locked` only blocks commands: `disable()` still switches the motors off, and a locked but switched-off robot can be pushed by hand.
+While `locked` is `true`, `off()` does not stick — the hold re-engages within about a second; call `disable()` to switch the motors off durably.
+Driving resumes as soon as `locked` is `false` again.
+Writes to `locked` and `enabled` are forwarded to shadow modules, so shadowed wheels stop together with their master.
 
 ## Stepper Motor
 
@@ -991,12 +1020,13 @@ The DunkerWheels module combines two DunkerMotor modules and provides odometry a
 | ------------------------------------------------ | --------------------- | ----------------------- |
 | `wheels = DunkerWheels(left_motor, right_motor)` | left and right motors | two DunkerMotor modules |
 
-| Properties             | Description                    | Data type |
-| ---------------------- | ------------------------------ | --------- |
-| `wheels.width`         | Wheel distance (m)             | `float`   |
-| `wheels.linear_speed`  | Forward speed (m/s)            | `float`   |
-| `wheels.angular_speed` | Turning speed (rad/s)          | `float`   |
-| `wheels.enabled`       | Whether the wheels are enabled | `bool`    |
+| Properties             | Description                                              | Data type |
+| ---------------------- | -------------------------------------------------------- | --------- |
+| `wheels.width`         | Wheel distance (m)                                       | `float`   |
+| `wheels.linear_speed`  | Forward speed (m/s)                                      | `float`   |
+| `wheels.angular_speed` | Turning speed (rad/s)                                    | `float`   |
+| `wheels.enabled`       | Whether the wheels are enabled                           | `bool`    |
+| `wheels.locked`        | Whether driving is blocked (safety interlock, see below) | `bool`    |
 
 | Methods                         | Description                                     | Arguments        |
 | ------------------------------- | ----------------------------------------------- | ---------------- |
@@ -1005,6 +1035,14 @@ The DunkerWheels module combines two DunkerMotor modules and provides odometry a
 | `wheels.disable()`              | Disable both motors                             |                  |
 
 When the wheels are disabled, they will freewheel and ignore movement commands.
+
+The `locked` property is a safety interlock for rules running on the microcontroller:
+while it is `true`, drive commands are ignored and the wheels are actively held at standstill with a zero-speed setpoint — the motors stay enabled.
+This lets a rule block driving while some other condition is unmet, for example while a tool is not in its parking position.
+The hold is sent when `locked` becomes `true` and refreshed about once per second, so it re-engages even if a motor controller restarts.
+`locked` only blocks commands: `disable()` still switches the motors off, and a locked but switched-off robot can be pushed by hand.
+Driving resumes as soon as `locked` is `false` again.
+Writes to `locked` and `enabled` are forwarded to shadow modules, so shadowed wheels stop together with their master.
 
 ## Analog Unit
 
@@ -1103,6 +1141,9 @@ Note that the remote module has to have turned on broadcasting: `x.broadcast()`.
 | `module = Proxy()` |
 
 Note that the proxy module forwards all method calls to the remote module.
+
+Proxies cannot be passed as arguments to other module constructors (e.g. as end stops for a motor axis), because the actual module only exists on the remote microcontroller.
+Declare the depending module on the same microcontroller instead.
 
 | Properties | Description                                       | Data type |
 | ---------- | ------------------------------------------------- | --------- |
