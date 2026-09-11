@@ -55,9 +55,12 @@ docker run -it --rm --device=/dev/ttyACM0 -v $(pwd):/project -w /project espress
 
 Raw ESP-IDF log output, saved to file:
 
+
 ```bash
-docker run -it --rm --device=/dev/ttyACM0 -v $(pwd):/project -w /project espressif/idf:v5.3.1 \
+docker run -it --rm --device=/dev/ttyACM0 --group-add dialout \
+  -v $(pwd):/project -w /project espressif/idf:v5.3.1 \
   bash -c "idf.py monitor 2>&1 | tee full_debug.log"
+
 ```
 
 Interactive Lizard console — send DSL commands directly, e.g. `core.info()`:
