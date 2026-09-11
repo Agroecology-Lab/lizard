@@ -29,6 +29,9 @@ class ZioMotor;
 using ZioMotor_ptr = std::shared_ptr<ZioMotor>;
 
 class ZioMotor : public Module {
+public:
+    static inline constexpr const char *TYPE = "ZioMotor";
+
 private:
     const i2c_port_t i2c_port;
     const uint8_t address;

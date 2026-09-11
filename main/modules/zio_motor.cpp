@@ -1,11 +1,25 @@
 #include "zio_motor.h"
+#include "module_helpers.h"
 #include <cmath>
 #include <stdexcept>
 
 #define I2C_MASTER_TX_BUF_DISABLE 0
 #define I2C_MASTER_RX_BUF_DISABLE 0
 
-REGISTER_MODULE_DEFAULTS(ZioMotor)
+static Module_ptr create_zio_motor(const std::string &name, const std::vector<ConstExpression_ptr> &arguments, MessageHandler) {
+    if (arguments.size() > 6) {
+        throw std::runtime_error("unexpected number of arguments");
+    }
+    Module::expect(arguments, -1, integer, integer, integer, integer, integer, numbery);
+    const i2c_port_t port = arguments.size() > 0 ? (i2c_port_t)arguments[0]->evaluate_integer() : I2C_NUM_0;
+    const gpio_num_t sda_pin = arguments.size() > 1 ? (gpio_num_t)arguments[1]->evaluate_integer() : DEFAULT_I2C_SDA_PIN;
+    const gpio_num_t scl_pin = arguments.size() > 2 ? (gpio_num_t)arguments[2]->evaluate_integer() : DEFAULT_I2C_SCL_PIN;
+    const uint8_t address = arguments.size() > 3 ? (uint8_t)arguments[3]->evaluate_integer() : 0x40;
+    const int clk_speed = arguments.size() > 4 ? (int)arguments[4]->evaluate_integer() : 100000;
+    const float pwm_frequency = arguments.size() > 5 ? (float)arguments[5]->evaluate_number() : 1000.0f;
+    return std::make_shared<ZioMotor>(name, port, sda_pin, scl_pin, address, clk_speed, pwm_frequency);
+}
+REGISTER_MODULE(ZioMotor, &create_zio_motor)
 
 // Static member definition
 constexpr uint8_t ZioMotor::MOTOR_CHANNELS[4][3];
@@ -30,7 +44,7 @@ ZioMotor::ZioMotor(const std::string name,
                    uint8_t address,
                    int clk_speed,
                    float pwm_frequency)
-    : Module(zio_motor, name), i2c_port(i2c_port), address(address) {
+    : Module(name), i2c_port(i2c_port), address(address) {
 
     i2c_config_t config;
     config.mode = I2C_MODE_MASTER;
